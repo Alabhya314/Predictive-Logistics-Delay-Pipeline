@@ -37,12 +37,12 @@ jobs:
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         run: |
           echo "Triggering logistics_pipeline_dag..."
-          docker compose exec -T -e API_KEY airflow-webserver airflow dags trigger logistics_pipeline_dag
+          docker compose exec -T -e API_KEY airflow-webserver airflow dags trigger logistics_delay_pipeline
           
           echo "Waiting for DAG to complete..."
           timeout 1200s bash -c '
             while true; do
-              STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag | tail -n 1 | tr -d "\r")
+              STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_delay_pipeline | tail -n 1 | tr -d "\r")
               echo "Current DAG state: $STATE"
               
               if [[ "$STATE" == "success" ]]; then
