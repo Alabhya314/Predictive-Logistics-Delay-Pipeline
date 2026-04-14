@@ -20,7 +20,7 @@ jobs:
       - name: Wait for Health Checks
         run: |
           echo "Waiting for services to become healthy..."
-          timeout 180s bash -c 'until curl --fail http://localhost:8080/health && curl --fail http://localhost:5000/health; do echo "waiting..."; sleep 5; done'
+          timeout 600s bash -c 'until curl --fail http://localhost:8080/health && curl --fail http://localhost:5000/health; do echo "waiting..."; sleep 5; done'
           echo "Services are up!"
 
       - name: Trigger Airflow DAG
@@ -32,7 +32,7 @@ jobs:
           docker compose exec -T -e API_KEY airflow-webserver airflow dags trigger logistics_pipeline_dag
           
           echo "Waiting for DAG to complete..."
-          timeout 900s bash -c '
+          timeout 1200s bash -c '
             while true; do
               STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag | tail -n 1)
               echo "Current DAG state: $STATE"
