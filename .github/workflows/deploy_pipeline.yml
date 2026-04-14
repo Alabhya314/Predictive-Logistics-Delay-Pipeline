@@ -13,15 +13,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
+      - name: Configure Directories and Permissions
+        # Airflow runs as UID 50000. Give it permission to write data artifacts.
+        run: |
+          mkdir -p data/models data/alerts data/validated data/processed data/raw
+          chmod -R 777 data
+          mkdir -p mlflow_export
+
       - name: Start Docker Services
         run: |
           docker compose up --build -d
 
       - name: Wait for Health Checks
         run: |
-          echo "Waiting for services to become healthy..."
-          timeout 600s bash -c 'until curl --fail http://localhost:8080/health && curl --fail http://localhost:5000/health; do echo "waiting..."; sleep 5; done'
-          echo "Services are up!"
+          echo "Waiting for Airflow to become healthy..."
+          # MLflow /health returns 404 on some versions, so we only poll Airflow. Airflow booting guarantees the heavy deps (XGBoost) are installed!
+          timeout 600s bash -c 'until curl -sSf http://localhost:8080/health > /dev/null 2>&1; do echo "waiting for airflow..."; sleep 10; done' || { echo "TIMEOUT or ERROR! Dumping logs..."; docker compose logs; exit 1; }
+          echo "Airflow is up!"
 
       - name: Trigger Airflow DAG
         env:
@@ -34,25 +42,29 @@ jobs:
           echo "Waiting for DAG to complete..."
           timeout 1200s bash -c '
             while true; do
-              STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag | tail -n 1)
+              STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag | tail -n 1 | tr -d "\r")
               echo "Current DAG state: $STATE"
+              
               if [[ "$STATE" == "success" ]]; then
                 echo "DAG succeeded!"
                 break
               elif [[ "$STATE" == "failed" ]]; then
                 echo "DAG failed!"
+                docker compose logs
                 exit 1
               fi
               sleep 15
             done
-          '
+          ' || { echo "DAG Execution TIMEOUT! Dumping logs..."; docker compose logs; exit 1; }
 
       - name: Extract MLflow Artifacts
         if: always()
         run: |
           echo "Extracting mlflow data from the container volume..."
           MLFLOW_CID=$(docker compose ps -q mlflow)
-          docker cp $MLFLOW_CID:/mlflow ./mlflow_export
+          if [ ! -z "$MLFLOW_CID" ]; then
+             docker cp $MLFLOW_CID:/mlflow ./mlflow_export || true
+          fi
 
       - name: Upload Models
         if: always()
