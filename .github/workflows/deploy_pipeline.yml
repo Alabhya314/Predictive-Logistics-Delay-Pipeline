@@ -1,0 +1,72 @@
+name: Deploy Logistics Pipeline (Zero Cost)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Start Docker Services
+        run: |
+          docker-compose up --build -d
+
+      - name: Wait for Health Checks
+        run: |
+          echo "Waiting for services to become healthy..."
+          timeout 180s bash -c 'until curl --fail http://localhost:8080/health && curl --fail http://localhost:5000/health; do echo "waiting..."; sleep 5; done'
+          echo "Services are up!"
+
+      - name: Trigger Airflow DAG
+        env:
+          # GitHub Secrets Placeholders for sensitive credentials
+          API_KEY: ${{ secrets.API_KEY }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+        run: |
+          echo "Triggering logistics_pipeline_dag..."
+          # Trigger the DAG via docker exec. We pass the API_KEY env var if the pipeline requires it.
+          docker-compose exec -T -e API_KEY airflow-webserver airflow dags trigger logistics_pipeline_dag
+          
+          echo "Waiting for DAG to complete..."
+          # We check the state of the last run. Loop until 'success' or 'failed'.
+          # 900s timeout (15 mins) as XGBoost training might take a little time.
+          timeout 900s bash -c '
+            while true; do
+              # The airflow cli outputs log lines, the last line is the state text.
+              STATE=$(docker-compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag | tail -n 1)
+              echo "Current DAG state: $STATE"
+              if [[ "$STATE" == "success" ]]; then
+                echo "DAG succeeded!"
+                break
+              elif [[ "$STATE" == "failed" ]]; then
+                echo "DAG failed!"
+                exit 1
+              fi
+              sleep 15
+            done
+          '
+
+      - name: Extract MLflow Artifacts
+        if: always()
+        run: |
+          echo "Extracting mlflow data from the container volume..."
+          # Get container ID for the mlflow service and extract the internal /mlflow path
+          MLFLOW_CID=$(docker-compose ps -q mlflow)
+          docker cp $MLFLOW_CID:/mlflow ./mlflow_export
+
+      - name: Upload Models
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: logistics-models
+          path: data/models/
+
+      - name: Upload MLflow Runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mlflow-artifacts
+          path: ./mlflow_export/
