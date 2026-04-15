@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Data (tracked by DVC, not git)
+data/raw/*.parquet
+data/validated/*.parquet
+data/processed/*.parquet
+data/models/*.json
+data/models/*.pkl
+data/alerts/*.json
+mlflow_export/
+
+# Environment
+.env
+.venv
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db

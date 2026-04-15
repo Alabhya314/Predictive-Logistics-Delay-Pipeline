@@ -1,0 +1,12 @@
+apache-airflow==2.8.1
+apache-airflow-providers-common-sql==1.8.1
+mlflow==2.11.3
+xgboost==2.0.3
+lightgbm==4.3.0
+scikit-learn==1.4.2
+pandas==2.2.2
+pyarrow==15.0.2
+great-expectations==0.18.12
+dvc==3.49.0
+pytest==8.1.1
+pytest-cov==5.0.0
