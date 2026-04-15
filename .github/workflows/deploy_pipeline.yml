@@ -19,57 +19,70 @@ jobs:
           chmod -R 777 data
           mkdir -p mlflow_export
 
-      - name: Start Docker Services
+      - name: Build and Start Docker Services
         run: |
           docker compose up --build -d
 
-      - name: Wait for Airflow Webserver
+      - name: Wait for Airflow Webserver (REST API)
         run: |
           echo "Waiting for Airflow webserver to become healthy..."
           timeout 600s bash -c '
-            until curl -sSf -o /dev/null -w "%{http_code}" http://localhost:8080/health | grep -q "200"; do
+            until curl -sSf -u admin:admin http://localhost:8080/api/v1/health 2>/dev/null | grep -q "\"healthy\""; do
               echo "  still waiting... ($(date +%T))"
-              sleep 10
+              sleep 15
             done
           ' || {
-            echo "=== TIMEOUT: Airflow did not become healthy. Dumping logs ==="
+            echo "=== TIMEOUT: Airflow did not become healthy. Dumping container logs ==="
             docker compose logs --no-color
             exit 1
           }
-          echo "Airflow is healthy!"
+          echo "Airflow REST API is healthy!"
 
-      - name: Trigger Airflow DAG
-        env:
-          API_KEY: ${{ secrets.API_KEY }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+      - name: Trigger DAG via REST API
         run: |
-          echo "Triggering logistics_delay_pipeline..."
-          docker compose exec -T airflow-webserver airflow dags trigger logistics_delay_pipeline
+          echo "Triggering logistics_delay_pipeline via REST API..."
+          RESPONSE=$(curl -sSf -u admin:admin \
+            -X POST "http://localhost:8080/api/v1/dags/logistics_delay_pipeline/dagRuns" \
+            -H "Content-Type: application/json" \
+            -d '{"conf": {}}')
+          echo "Trigger response: $RESPONSE"
+          DAG_RUN_ID=$(echo $RESPONSE | python3 -c "import sys,json; print(json.load(sys.stdin)['dag_run_id'])")
+          echo "DAG_RUN_ID=$DAG_RUN_ID" >> $GITHUB_ENV
+          echo "DAG run triggered: $DAG_RUN_ID"
 
-      - name: Wait for DAG Completion
+      - name: Wait for DAG Completion via REST API
         run: |
-          echo "Polling DAG state..."
+          echo "Polling DAG run state for: $DAG_RUN_ID"
           timeout 1800s bash -c '
             while true; do
-              STATE=$(docker compose exec -T airflow-webserver airflow dags state logistics_delay_pipeline 2>/dev/null | grep -v "^\[" | tail -n 1 | tr -d "\r\n ")
+              STATE=$(curl -sSf -u admin:admin \
+                "http://localhost:8080/api/v1/dags/logistics_delay_pipeline/dagRuns/$DAG_RUN_ID" \
+                2>/dev/null | python3 -c "import sys,json; print(json.load(sys.stdin).get(\"state\",\"unknown\"))" 2>/dev/null || echo "unknown")
               echo "  DAG state: [$STATE]  ($(date +%T))"
               if [[ "$STATE" == "success" ]]; then
                 echo "DAG succeeded!"
                 exit 0
               elif [[ "$STATE" == "failed" ]]; then
-                echo "DAG FAILED — dumping task logs..."
-                docker compose exec -T airflow-webserver airflow tasks states-for-dag-run logistics_delay_pipeline $(date -u +%Y-%m-%dT%H:%M:%S) 2>/dev/null || true
-                docker compose logs --no-color airflow-worker 2>/dev/null || true
-                docker compose logs --no-color airflow-scheduler 2>/dev/null || true
+                echo "=== DAG FAILED. Fetching task instance states ==="
+                curl -sSf -u admin:admin \
+                  "http://localhost:8080/api/v1/dags/logistics_delay_pipeline/dagRuns/$DAG_RUN_ID/taskInstances" \
+                  2>/dev/null | python3 -c "
+import sys, json
+data = json.load(sys.stdin)
+for ti in data.get(\"task_instances\", []):
+    print(f\"Task: {ti[\"task_id\"]} | State: {ti[\"state\"]} | Note: {ti.get(\"note\",\"\")}\")
+" || true
                 exit 1
               fi
               sleep 20
             done
           ' || {
-            echo "=== Timeout or failure. Full logs ==="
+            echo "=== Timeout or failure. Full docker logs ==="
             docker compose logs --no-color
             exit 1
           }
+        env:
+          DAG_RUN_ID: ${{ env.DAG_RUN_ID }}
 
       - name: Extract MLflow Artifacts
         if: always()
