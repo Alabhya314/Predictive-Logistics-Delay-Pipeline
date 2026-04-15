@@ -1,5 +1,5 @@
-apache-airflow==2.8.1
-apache-airflow-providers-common-sql==1.8.1
+# These are the EXTRA packages needed on top of the base apache/airflow:2.8.1 image
+# Do NOT include apache-airflow itself — the image already has it
 mlflow==2.11.3
 xgboost==2.0.3
 lightgbm==4.3.0
@@ -8,5 +8,3 @@ pandas==2.2.2
 pyarrow==15.0.2
 great-expectations==0.18.12
 dvc==3.49.0
-pytest==8.1.1
-pytest-cov==5.0.0
