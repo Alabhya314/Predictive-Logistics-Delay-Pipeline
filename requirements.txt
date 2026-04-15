@@ -1,5 +1,7 @@
-# These are the EXTRA packages needed on top of the base apache/airflow:2.8.1 image
+# Extra ML/pipeline packages on top of apache/airflow:2.9.3-python3.11 (Python 3.11)
 # Do NOT include apache-airflow itself — the image already has it
+# All packages below are verified compatible with Python 3.11
+
 mlflow==2.11.3
 xgboost==2.0.3
 lightgbm==4.3.0
