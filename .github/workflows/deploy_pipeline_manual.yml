@@ -9,6 +9,7 @@ env:
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
+    timeout-minutes: 75
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -53,7 +54,7 @@ jobs:
       - name: Wait for DAG Completion via REST API
         run: |
           echo "Polling DAG run state for: $DAG_RUN_ID"
-          timeout 1800s bash -c '
+          timeout 3600s bash -c '
             while true; do
               STATE=$(curl -sSf -u admin:admin \
                 "http://localhost:8080/api/v1/dags/logistics_delay_pipeline/dagRuns/$DAG_RUN_ID" \
@@ -80,8 +81,8 @@ jobs:
               sleep 20
             done
           ' || {
-            echo "=== Timeout or failure. Full docker logs ==="
-            docker compose logs --no-color
+            echo "=== Timeout or failure. Dumping scheduler + webserver logs ==="
+            docker compose logs --no-color airflow-scheduler airflow-webserver
             exit 1
           }
         env:
@@ -104,6 +105,7 @@ jobs:
         with:
           name: logistics-models
           path: data/models/
+          if-no-files-found: warn
 
       - name: Upload MLflow Runs
         if: always()
@@ -111,4 +113,5 @@ jobs:
         with:
           name: mlflow-artifacts
           path: ./mlflow_export/
+          if-no-files-found: warn
 

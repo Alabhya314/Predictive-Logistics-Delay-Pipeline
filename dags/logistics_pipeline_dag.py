@@ -34,11 +34,9 @@ DEFAULT_ARGS = {
     "start_date": days_ago(1),
     "email_on_failure": False,         # set to True and configure smtp in prod
     "email_on_retry": False,
-    "retries": 3,
-    "retry_delay": timedelta(minutes=5),
-    "retry_exponential_backoff": True,  # 5m, 10m, 20m backoffs
-    "max_retry_delay": timedelta(hours=1),
-    "execution_timeout": timedelta(minutes=30),
+    "retries": 1,                       # 3 in prod; 1 here keeps CI predictable
+    "retry_delay": timedelta(minutes=2),
+    "execution_timeout": timedelta(minutes=20),  # fail fast if a task hangs
 }
 
 

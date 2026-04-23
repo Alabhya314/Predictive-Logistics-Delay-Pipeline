@@ -73,14 +73,13 @@ services:
         condition: service_completed_successfully
 
   mlflow:
-    image: python:3.11-slim
+    image: ghcr.io/mlflow/mlflow:v2.11.3
     command: >
-      bash -c "pip install mlflow psycopg2-binary --quiet &&
-               mlflow server
-               --host 0.0.0.0
-               --port 5000
-               --backend-store-uri /mlflow/mlruns
-               --default-artifact-root /mlflow/artifacts"
+      mlflow server
+      --host 0.0.0.0
+      --port 5000
+      --backend-store-uri /mlflow/mlruns
+      --default-artifact-root /mlflow/artifacts
     ports:
       - "5000:5000"
     volumes:
