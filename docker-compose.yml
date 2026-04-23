@@ -81,7 +81,7 @@ services:
     volumes:
       - mlflow-data:/mlflow
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/ping')"]
       interval: 15s
       timeout: 10s
       retries: 10

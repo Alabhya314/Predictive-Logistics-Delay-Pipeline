@@ -43,7 +43,7 @@ jobs:
         run: |
           echo "Waiting for MLflow server to become ready..."
           timeout 300s bash -c '
-            until curl -sf http://localhost:5000/health 2>/dev/null | grep -q "OK"; do
+            until curl -sf http://localhost:5000/ping 2>/dev/null | grep -q "OK"; do
               echo "  MLflow not ready yet... ($(date +%T))"
               sleep 10
             done
