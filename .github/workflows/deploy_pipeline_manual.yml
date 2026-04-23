@@ -39,6 +39,17 @@ jobs:
           }
           echo "Airflow REST API is healthy!"
 
+      - name: Wait for MLflow Server
+        run: |
+          echo "Waiting for MLflow server to become ready..."
+          timeout 300s bash -c '
+            until curl -sf http://localhost:5000/health 2>/dev/null | grep -q "OK"; do
+              echo "  MLflow not ready yet... ($(date +%T))"
+              sleep 10
+            done
+          ' || echo "WARNING: MLflow health check timed out — training will run in local-only mode."
+          echo "MLflow check done."
+
       - name: Trigger DAG via REST API
         run: |
           echo "Triggering logistics_delay_pipeline via REST API..."

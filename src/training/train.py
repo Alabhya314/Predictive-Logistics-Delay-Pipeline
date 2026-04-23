@@ -170,33 +170,41 @@ def run_training(
         return model, train_metrics, test_metrics
 
     if MLFLOW_AVAILABLE:
-        with mlflow.start_run() as run:
-            mlflow.log_param("data_version_hash", data_version)
-            mlflow.log_param("n_features", len(feature_cols))
-            mlflow.log_param("train_size", len(X_train))
-            mlflow.log_param("test_size", len(X_test))
-            for k, v in params.items():
-                mlflow.log_param(k, v)
+        try:
+            with mlflow.start_run() as run:
+                mlflow.log_param("data_version_hash", data_version)
+                mlflow.log_param("n_features", len(feature_cols))
+                mlflow.log_param("train_size", len(X_train))
+                mlflow.log_param("test_size", len(X_test))
+                for k, v in params.items():
+                    mlflow.log_param(k, v)
 
-            model, train_metrics, test_metrics = _train_and_evaluate()
+                model, train_metrics, test_metrics = _train_and_evaluate()
 
-            mlflow.log_metrics({f"train_{k}": v for k, v in train_metrics.items()})
-            mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
+                mlflow.log_metrics({f"train_{k}": v for k, v in train_metrics.items()})
+                mlflow.log_metrics({f"test_{k}": v for k, v in test_metrics.items()})
 
-            model_path = output_dir / "model.json"
-            if XGB_AVAILABLE:
-                model.save_model(str(model_path))
-                mlflow.xgboost.log_model(model, artifact_path="model")
-            else:
-                import pickle
-                with open(str(model_path).replace(".json", ".pkl"), "wb") as fh:
-                    pickle.dump(model, fh)
+                model_path = output_dir / "model.json"
+                if XGB_AVAILABLE:
+                    model.save_model(str(model_path))
+                    mlflow.xgboost.log_model(model, artifact_path="model")
+                else:
+                    import pickle
+                    with open(str(model_path).replace(".json", ".pkl"), "wb") as fh:
+                        pickle.dump(model, fh)
 
-            mlflow.log_artifact(str(feature_list_path), artifact_path="features")
+                mlflow.log_artifact(str(feature_list_path), artifact_path="features")
 
-            run_id = run.info.run_id
-            log.info("MLflow run_id: %s", run_id)
-    else:
+                run_id = run.info.run_id
+                log.info("MLflow run_id: %s", run_id)
+        except Exception as mlflow_exc:
+            log.warning(
+                "MLflow tracking unavailable (%s) — falling back to local-only mode.",
+                mlflow_exc,
+            )
+            MLFLOW_AVAILABLE = False  # fall through to the block below
+
+    if not MLFLOW_AVAILABLE:
         model, train_metrics, test_metrics = _train_and_evaluate()
         import pickle
         model_path = output_dir / "model.pkl"
