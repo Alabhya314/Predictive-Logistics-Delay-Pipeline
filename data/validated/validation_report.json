@@ -1,0 +1,10 @@
+{
+  "success": true,
+  "evaluated_at": "2026-04-24T17:04:38.352688",
+  "statistics": {
+    "evaluated_expectations": 20,
+    "successful_expectations": 20,
+    "unsuccessful_expectations": 0
+  },
+  "failures": []
+}

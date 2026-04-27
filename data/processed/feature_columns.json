@@ -1,0 +1,21 @@
+[
+  "trip_distance",
+  "fare_amount",
+  "weather_code",
+  "traffic_index",
+  "month",
+  "is_weekend",
+  "is_rush_hour",
+  "trip_duration_min",
+  "hour_sin",
+  "hour_cos",
+  "dow_sin",
+  "dow_cos",
+  "delay_rolling_mean_3h",
+  "delay_rolling_mean_6h",
+  "delay_rolling_mean_12h",
+  "weather_traffic_interaction",
+  "distance_per_minute",
+  "is_bad_weather",
+  "is_high_traffic"
+]

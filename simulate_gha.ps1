@@ -20,7 +20,7 @@ Write-Host "==========================================" -ForegroundColor Cyan
 
 # Step 1: Start Docker Services
 Write-Host "`n[1/6] Starting Docker Services..." -ForegroundColor Yellow
-docker-compose up --build -d
+docker compose up --build -d
 
 # Step 2: Wait for Health Checks
 Write-Host "`n[2/6] Waiting for Airflow and MLflow to become healthy (timeout 3 mins)..." -ForegroundColor Yellow
@@ -51,7 +51,7 @@ if (-not $Healthy) {
 
 # Step 3: Trigger Airflow DAG
 Write-Host "`n[3/6] Triggering logistics_pipeline_dag..." -ForegroundColor Yellow
-docker-compose exec -T airflow-webserver airflow dags trigger logistics_pipeline_dag
+docker compose exec -T airflow-webserver airflow dags trigger logistics_pipeline_dag
 
 # Step 4: Poll DAG State
 Write-Host "`n[4/6] Waiting for DAG to complete (timeout 15 mins)..." -ForegroundColor Yellow
@@ -62,7 +62,7 @@ $DagSuccess = $false
 while ($StopWatch.Elapsed.TotalSeconds -lt $DagTimeout) {
     # We grab the last line of the state output
     try {
-        $StateOutput = docker-compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag 2>$null
+        $StateOutput = docker compose exec -T airflow-webserver airflow dags state logistics_pipeline_dag 2>$null
         $StateLines = $StateOutput -split "`r`n|`n" | Where-Object { $_.Trim() -ne "" }
         $State = $StateLines[-1]
         
@@ -86,7 +86,7 @@ while ($StopWatch.Elapsed.TotalSeconds -lt $DagTimeout) {
 # Step 5: Extract Artifacts
 if ($DagSuccess) {
     Write-Host "`n[5/6] Extracting MLflow Artifacts..." -ForegroundColor Yellow
-    $MlflowCID = (docker-compose ps -q mlflow).Trim()
+    $MlflowCID = (docker compose ps -q mlflow).Trim()
     if ($MlflowCID) {
         Write-Host "Copying data from container volume..."
         docker cp "${MlflowCID}:/mlflow" ./mlflow_export
@@ -99,7 +99,7 @@ if ($DagSuccess) {
 
 # Step 6: Teardown
 Write-Host "`n[6/6] Tearing down services..." -ForegroundColor Yellow
-docker-compose down -v
+docker compose down -v
 Write-Host "Teardown complete." -ForegroundColor Green
 
 if ($DagSuccess) {

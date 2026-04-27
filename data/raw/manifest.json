@@ -1,0 +1,8 @@
+[
+  {
+    "file": "logistics_20260424T170428Z.parquet",
+    "sha256": "e9def9c6e849c1248b79db59d7d661e335ee0e8271354445bbfa30669dd3d170",
+    "n_rows": 5000,
+    "ingested_at": "2026-04-24T17:04:28.536940"
+  }
+]

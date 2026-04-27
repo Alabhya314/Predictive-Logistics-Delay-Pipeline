@@ -22,6 +22,7 @@ mlflow_export/
 .venv
 venv/
 env/
+.streamlit/
 
 # IDE
 .vscode/
